@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather App</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #00b4db, #0083b0);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 100%;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #555;
+        }
+        input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #0083b0;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 1rem;
+            transition: background 0.3s ease;
+        }
+        button:hover {
+            background: #00b4db;
+        }
+        #result {
+            margin-top: 2rem;
+            padding: 1rem;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.8);
+        }
+        .weather-info {
+            display: none;
+            margin-top: 1rem;
+        }
+        .weather-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #eee;
+        }
+        .weather-row:last-child {
+            border-bottom: none;
+        }
+        .loader {
+            display: none;
+            text-align: center;
+            margin: 1rem 0;
+        }
+        .error {
+            color: #dc3545;
+            text-align: center;
+            margin-top: 1rem;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Weather Information</h1>
+        <form id="weatherForm">
+            <div class="form-group">
+                <label for="latitude">Latitude:</label>
+                <input type="number" id="latitude" step="any" required placeholder="Enter latitude (e.g., 51.5074)">
+            </div>
+            <div class="form-group">
+                <label for="longitude">Longitude:</label>
+                <input type="number" id="longitude" step="any" required placeholder="Enter longitude (e.g., -0.1278)">
+            </div>
+            <button type="submit">Get Weather</button>
+        </form>
+        
+        <div id="loader" class="loader">Loading...</div>
+        <div id="error" class="error"></div>
+        
+        <div id="weatherInfo" class="weather-info">
+            <div class="weather-row">
+                <strong>Location:</strong>
+                <span id="location"></span>
+            </div>
+            <div class="weather-row">
+                <strong>City:</strong>
+                <span id="city"></span>
+            </div>
+            <div class="weather-row">
+                <strong>Country:</strong>
+                <span id="country"></span>
+            </div>
+            <div class="weather-row">
+                <strong>Temperature:</strong>
+                <span id="temperature"></span>
+            </div>
+            <div class="weather-row">
+                <strong>Wind Speed:</strong>
+                <span id="windspeed"></span>
+            </div>
+            <div class="weather-row">
+                <strong>Wind Direction:</strong>
+                <span id="winddirection"></span>
+            </div>
+            <div class="weather-row">
+                <strong>Weather:</strong>
+                <span id="weathercode"></span>
+            </div>
+            <div class="weather-row">
+                <strong>Time:</strong>
+                <span id="time"></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Function to get weather code description
+        function getWeatherDescription(code) {
+            const weatherCodes = {
+                0: 'Clear sky',
+                1: 'Mainly clear',
+                2: 'Partly cloudy',
+                3: 'Overcast',
+                45: 'Foggy',
+                48: 'Depositing rime fog',
+                51: 'Light drizzle',
+                53: 'Moderate drizzle',
+                55: 'Dense drizzle',
+                61: 'Slight rain',
+                63: 'Moderate rain',
+                65: 'Heavy rain',
+                71: 'Slight snow fall',
+                73: 'Moderate snow fall',
+                75: 'Heavy snow fall',
+                77: 'Snow grains',
+                80: 'Slight rain showers',
+                81: 'Moderate rain showers',
+                82: 'Violent rain showers',
+                85: 'Slight snow showers',
+                86: 'Heavy snow showers',
+                95: 'Thunderstorm',
+                96: 'Thunderstorm with slight hail',
+                99: 'Thunderstorm with heavy hail'
+            };
+            return weatherCodes[code] || 'Unknown';
+        }
+
+        document.getElementById('weatherForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const latitude = document.getElementById('latitude').value;
+            const longitude = document.getElementById('longitude').value;
+            
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('weatherInfo').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+
+            try {
+                const query = `
+                    query {
+                        weather(latitude: "${latitude}", longitude: "${longitude}") {
+                            temperature
+                            windspeed
+                            winddirection
+                            weathercode
+                            location
+                            city
+                            country
+                            time
+                        }
+                    }
+                `;
+
+                const response = await fetch('/graphql', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query })
+                });
+
+                const data = await response.json();
+
+                if (data.errors) {
+                    throw new Error(data.errors[0].message);
+                }
+
+                const weather = data.data.weather;
+                
+                // Update the UI with weather information
+                document.getElementById('location').textContent = weather.location;
+                document.getElementById('city').textContent = weather.city;
+                document.getElementById('country').textContent = weather.country;
+                document.getElementById('temperature').textContent = `${weather.temperature}°C`;
+                document.getElementById('windspeed').textContent = `${weather.windspeed} km/h`;
+                document.getElementById('winddirection').textContent = `${weather.winddirection}°`;
+                document.getElementById('weathercode').textContent = `${getWeatherDescription(weather.weathercode)}`;
+                // Format time in UTC
+                const utcTime = new Date(weather.time);
+                document.getElementById('time').textContent = `${utcTime.toUTCString()} (UTC)`;
+                
+                document.getElementById('weatherInfo').style.display = 'block';
+            } catch (error) {
+                document.getElementById('error').textContent = `Error: ${error.message}`;
+                document.getElementById('error').style.display = 'block';
+            } finally {
+                document.getElementById('loader').style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
